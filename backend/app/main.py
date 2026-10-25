@@ -26,6 +26,16 @@ def result(data, status=200):
 
 @app.exception_handler(psycopg.Error)
 async def database_error(request, exc):
+    # SQLSTATE and exception type diagnose server/client failures without exposing
+    # passwords, connection strings, SQL parameters, or database row contents.
+    logging.getLogger(__name__).error(
+        'Database operation failed: type=%s sqlstate=%s',
+        type(exc).__name__, exc.sqlstate or 'none',
+    )
+    if isinstance(exc, (psycopg.errors.UndefinedTable, psycopg.errors.InvalidSchemaName)):
+        return result({'detail': 'Database tables are missing. Apply the application migration to the Supabase project configured in Render.'}, 503)
+    if isinstance(exc, psycopg.errors.InsufficientPrivilege):
+        return result({'detail': 'The database account lacks application permissions. Check the backend role grants in Supabase.'}, 503)
     if isinstance(exc, psycopg.errors.CheckViolation):
         # Only our trigger messages are safe to expose; never return SQL or row details.
         message = exc.diag.message_primary or ''
@@ -38,7 +48,6 @@ async def database_error(request, exc):
         return result({'detail': 'A referenced record does not exist.'}, 422)
     if isinstance(exc, (psycopg.errors.DeadlockDetected, psycopg.errors.SerializationFailure)):
         return result({'detail': 'Another update conflicted with this one. Refresh and try again.'}, 409)
-    logging.getLogger(__name__).error('Database operation failed: %s', type(exc).__name__)
     return result({'detail': 'Database is unavailable. Please try again.'}, 503)
 
 
