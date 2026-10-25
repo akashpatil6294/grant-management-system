@@ -1,0 +1,13 @@
+{
+  "name": "grant-database-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/schema.test.mjs",
+    "test:api": "node tests/run-api.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
+    "@electric-sql/pglite-socket": "^0.2.14"
+  }
+}
